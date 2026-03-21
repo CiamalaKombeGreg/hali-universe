@@ -1,13 +1,75 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Verse {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  scaleTierId Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scaleTier  ScaleTier    @relation(fields: [scaleTierId], references: [id], onDelete: Restrict)
+  genres     VerseGenre[]
+  characters Character[]
+}
+
+model Genre {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  verses VerseGenre[]
+}
+
+model VerseGenre {
+  verseId Int
+  genreId Int
+
+  verse Verse @relation(fields: [verseId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([verseId, genreId])
+}
+
+model Character {
+  id         Int      @id @default(autoincrement())
+  name       String
+  verseId    Int
+  isCanon    Boolean  @default(true)
+  isOriginal Boolean  @default(false)
+  isUncanon  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  verse Verse @relation(fields: [verseId], references: [id], onDelete: Cascade)
+}
+
+model ScaleTier {
+  id          Int          @id @default(autoincrement())
+  title       String       @unique
+  slug        String       @unique
+  tierCode    String
+  tierName    String
+  category    String
+  subTier     ScaleSubTier
+  hasPlus     Boolean      @default(false)
+  sortOrder   Int          @unique
+  dimension   String?
+  description String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  verses Verse[]
+}
+
+enum ScaleSubTier {
+  LOW
+  MEDIUM
+  HIGH
 }

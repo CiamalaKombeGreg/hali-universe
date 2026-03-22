@@ -10,7 +10,7 @@ export default function TieringPowerPage() {
 
       <div className="flex-1">
         <div className="mx-auto flex w-full max-w-400 flex-col gap-6 px-6 py-6 md:px-10">
-          <TieringSearchBanner />
+          <TieringSearchBanner title="Keywords" description="Fast access to scaling information and recorded systems." />
 
           <TieringSectionHeader
             title="Tiering Power Main Section"

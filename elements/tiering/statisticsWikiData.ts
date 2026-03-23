@@ -133,7 +133,7 @@ export const statisticsSections: StatisticsSection[] = [
     description: "Progression ceiling and rate of development.",
     subSections: [
       { id: "potential-range", title: "Potential Range" },
-      { id: "potential-speed", title: "Potential Speed" },
+      { id: "growth-speed", title: "Growth Speed" },
     ],
   },
   {
@@ -147,6 +147,7 @@ export const statisticsSections: StatisticsSection[] = [
       { id: "power-capabilities", title: "[Power] Capabilities" },
       { id: "power-potential", title: "[Power] Potential" },
       { id: "power-reserves", title: "[Power] Reserves" },
+      { id: "power-recovery", title: "[Power] Recovery" },
       { id: "power-efficiency", title: "[Power] Efficiency" },
     ],
   },
@@ -158,9 +159,9 @@ export const statisticsSections: StatisticsSection[] = [
     description: "High-impact matchup-deciding factors and special systems.",
     subSections: [
       { id: "hax-potency", title: "Hax Potency" },
-      { id: "resistance", title: "Resistance" },
+      { id: "resistance-potency", title: "Resistance Potency" },
+      { id: "ontological-level", title: "Ontological Level" },
       { id: "versatility", title: "Versatility" },
-      { id: "synergy", title: "Synergy" },
       { id: "activation-speed", title: "Activation Speed" },
       { id: "regeneration", title: "Regeneration" },
     ],

@@ -25,8 +25,8 @@ export const tierBrackets: TierBracket[] = [
     entries: [
       {
         tierNumber: "24",
-        tierName: "Non-Living",
-        fullTitle: "Non-Living - Tier 24",
+        tierName: "Inanimate",
+        fullTitle: "Inanimate - Tier 24",
         description:
           "Entities or objects with no autonomous action, no agency, and no independent interaction.",
         keyPoints: [

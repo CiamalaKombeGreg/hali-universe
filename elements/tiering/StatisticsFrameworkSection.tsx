@@ -188,6 +188,14 @@ export default function StatisticsFrameworkSection() {
             <h3 className="text-2xl font-black text-white">Special cases</h3>
 
             <div className="mt-5 space-y-4">
+
+              <div className="rounded-[22px] border border-emerald-300/15 bg-emerald-400/8 p-4">
+                <h4 className="text-lg font-black text-emerald-100">Inanimate</h4>
+                <p className="mt-2 text-sm leading-6 text-white/72">
+                  Level don&apos;t make any sense at the bottom.
+                </p>
+              </div>
+
               <div className="rounded-[22px] border border-fuchsia-300/15 bg-fuchsia-400/8 p-4">
                 <h4 className="text-lg font-black text-fuchsia-100">Outerversal</h4>
                 <p className="mt-2 text-sm leading-6 text-white/72">

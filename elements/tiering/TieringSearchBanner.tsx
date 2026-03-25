@@ -2,13 +2,7 @@
 
 import { Search, Sparkles, X } from "lucide-react";
 import { ChangeEvent } from "react";
-
-type SearchResultLike = {
-  id: string;
-  label: string;
-  targetId: string;
-  kind: string;
-};
+import type { SearchResult } from "./tieringWikiSearchTypes";
 
 type TieringSearchBannerProps = {
   badge?: string;
@@ -18,8 +12,8 @@ type TieringSearchBannerProps = {
   compact?: boolean;
   value?: string;
   onChange?: (value: string) => void;
-  results?: SearchResultLike[];
-  onSelectResult?: (result: SearchResultLike) => void;
+  results?: SearchResult[];
+  onSelectResult?: (result: SearchResult) => void;
   onClear?: () => void;
 };
 

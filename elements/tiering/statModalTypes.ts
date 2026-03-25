@@ -6,6 +6,7 @@ export type StatTableTierRow = {
 
 export type StatTableValueRow = {
   name: string;
+  tier?: string;
   value: string;
 };
 

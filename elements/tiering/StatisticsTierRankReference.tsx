@@ -1,5 +1,5 @@
 const tierRankRows = [
-  { tierCode: "Tier 24", name: "Non-Living", rank: "1.0", href: "/tiering-power/tiering-wiki#inert-basic-life" },
+  { tierCode: "Tier 24", name: "Inanimate", rank: "1.0", href: "/tiering-power/tiering-wiki#inert-basic-life" },
   { tierCode: "Tier 23", name: "Sub-Human", rank: "2.0", href: "/tiering-power/tiering-wiki#inert-basic-life" },
   { tierCode: "Tier 22", name: "Human", rank: "3.0", href: "/tiering-power/tiering-wiki#inert-basic-life" },
   { tierCode: "Tier 21", name: "Superhuman", rank: "4.0", href: "/tiering-power/tiering-wiki#enhanced" },
@@ -23,8 +23,8 @@ const tierRankRows = [
   { tierCode: "Tier 3", name: "Complex Megaversal", rank: "22.0", href: "/tiering-power/tiering-wiki#dimensional" },
   { tierCode: "Tier 2", name: "Hyperversal", rank: "23.0", href: "/tiering-power/tiering-wiki#dimensional" },
   { tierCode: "Tier 1", name: "Omniversal", rank: "24.0", href: "/tiering-power/tiering-wiki#transcendental" },
-  { tierCode: "Tier 0", name: "Outerversal", rank: "25.0", href: "/tiering-power/tiering-wiki#transcendental" },
-  { tierCode: "Tier Ω", name: "Boundless", rank: "26.0", href: "/tiering-power/tiering-wiki#transcendental" },
+  { tierCode: "Tier 0", name: "Outerversal", rank: "99.0", href: "/tiering-power/tiering-wiki#transcendental" },
+  { tierCode: "Tier Ω", name: "Boundless", rank: "999.0", href: "/tiering-power/tiering-wiki#transcendental" },
 ];
 
 const modifierRows = [

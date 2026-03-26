@@ -6,6 +6,104 @@ datasource db {
   provider = "postgresql"
 }
 
+enum AbilityNodeType {
+  SYSTEM
+  SUBSYSTEM
+  ABILITY
+  ASSOCIATION_SYSTEM
+  ASSOCIATION_ABILITY
+}
+
+enum AbilityFamilyType {
+  BODY_ALTERATION
+  EXTERNAL_MANIPULATION
+  MENTAL_PERCEPTUAL
+  SPIRITUAL_SOUL
+  CREATION_SUMMONING
+  CONCEPTUAL_ABSTRACT
+  METAPOWER
+  DIMENSIONAL_MOVEMENT
+  DEFENSE_NEGATION
+  UTILITY_SUPPORT
+}
+
+enum AbilityNodeStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model AbilityNode {
+  id     String            @id @default(cuid())
+  name   String
+  slug   String            @unique
+  type   AbilityNodeType
+  status AbilityNodeStatus @default(DRAFT)
+
+  family           AbilityFamilyType?
+  shortDescription String?
+  notes            String?
+  hierarchyLevel   String?
+  isActive         Boolean            @default(false)
+
+  contentBlocks Json?
+
+  parentId String?
+  parent   AbilityNode?  @relation("AbilityTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children AbilityNode[] @relation("AbilityTree")
+
+  sourcesFrom   AbilityAssociationSource[] @relation("AssociationResult")
+  sourcesUsedBy AbilityAssociationSource[] @relation("AssociationSource")
+
+  mainImageId String?
+  mainImage   AbilityNodeImage?  @relation("MainAbilityImage", fields: [mainImageId], references: [id], onDelete: SetNull)
+  images      AbilityNodeImage[] @relation("AbilityNodeImages")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([family])
+  @@index([status])
+  @@index([parentId])
+  @@index([name])
+}
+
+model AbilityAssociationSource {
+  id String @id @default(cuid())
+
+  resultNodeId String
+  sourceNodeId String
+
+  resultNode AbilityNode @relation("AssociationResult", fields: [resultNodeId], references: [id], onDelete: Cascade)
+  sourceNode AbilityNode @relation("AssociationSource", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([resultNodeId, sourceNodeId])
+  @@index([resultNodeId])
+  @@index([sourceNodeId])
+}
+
+model AbilityNodeImage {
+  id            String       @id @default(cuid())
+  abilityNodeId String?
+  abilityNode   AbilityNode? @relation("AbilityNodeImages", fields: [abilityNodeId], references: [id], onDelete: Cascade)
+
+  usedAsMainBy AbilityNode[] @relation("MainAbilityImage")
+
+  url        String
+  storageKey String?
+  altText    String?
+  caption    String?
+  sortOrder  Int     @default(0)
+  isPrimary  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([abilityNodeId])
+  @@index([sortOrder])
+}
+
 model Verse {
   id          Int      @id @default(autoincrement())
   name        String   @unique

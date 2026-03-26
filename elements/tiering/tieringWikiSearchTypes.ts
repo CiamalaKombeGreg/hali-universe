@@ -1,3 +1,5 @@
+import type { SearchResultLike } from "./sharedSearchTypes";
+
 export type SearchResultKind =
   | "section"
   | "subsection"
@@ -5,10 +7,7 @@ export type SearchResultKind =
   | "tier"
   | "keyword";
 
-export type SearchResult = {
-  id: string;
-  label: string;
-  targetId: string;
+export type SearchResult = SearchResultLike & {
   kind: SearchResultKind;
   keywords: string[];
 };

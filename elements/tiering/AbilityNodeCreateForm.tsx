@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import DescriptionBlocksEditor from "./DescriptionBlocksEditor";
 import { abilityHierarchy } from "./recordedAbilitiesData";
@@ -53,8 +53,12 @@ export default function AbilityNodeCreateForm() {
   const [notes, setNotes] = useState<string[]>([""]);
   const [hierarchyLevel, setHierarchyLevel] = useState("");
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
-  const [mainImage, setMainImage] = useState<UploadedImage | null>(null);
-  const [secondaryImages, setSecondaryImages] = useState<UploadedImage[]>([]);
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
+  const [secondaryImageFiles, setSecondaryImageFiles] = useState<File[]>([]);
+  const [secondaryImagePreviews, setSecondaryImagePreviews] = useState<
+    { id: string; file: File; preview: string }[]
+  >([]);
   const [parentSearch, setParentSearch] = useState("");
   const [parentResults, setParentResults] = useState<LinkedNodePreview[]>([]);
   const [selectedParent, setSelectedParent] = useState<LinkedNodePreview | null>(null);
@@ -63,6 +67,9 @@ export default function AbilityNodeCreateForm() {
   const [childNodes, setChildNodes] = useState<LinkedNodePreview[]>([]);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const mainImageInputRef = useRef<HTMLInputElement | null>(null);
+  const secondaryImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const slug = useMemo(() => slugify(name), [name]);
 
@@ -73,11 +80,11 @@ export default function AbilityNodeCreateForm() {
   const canPublish = useMemo(() => {
     if (!name.trim()) return false;
     if (!slug) return false;
-    if (!mainImage) return false;
+    if (!mainImageFile) return false;
     if (isAbilityType && !family) return false;
     if (requiresChildAbility && childNodes.length === 0) return false;
     return true;
-  }, [name, slug, mainImage, isAbilityType, family, requiresChildAbility, childNodes]);
+  }, [name, slug, mainImageFile, isAbilityType, family, requiresChildAbility, childNodes]);
 
   async function uploadFile(file: File, isPrimary: boolean) {
     const formData = new FormData();
@@ -104,21 +111,51 @@ export default function AbilityNodeCreateForm() {
     return image;
   }
 
-  async function handleMainImageChange(file: File | null) {
-    if (!file) return;
-    const uploaded = await uploadFile(file, true);
-    setMainImage(uploaded);
+  function handleMainImageSelection(file: File | null) {
+  if (!file) return;
+
+  if (mainImagePreview) {
+    URL.revokeObjectURL(mainImagePreview);
+  }
+
+  const preview = URL.createObjectURL(file);
+  setMainImageFile(file);
+  setMainImagePreview(preview);
+  setDirty(true);
+}
+
+  function handleSecondaryImageSelection(files: FileList | null) {
+    if (!files?.length) return;
+
+    const nextFiles = Array.from(files);
+    const nextPreviews = nextFiles.map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+
+    setSecondaryImageFiles((prev) => [...prev, ...nextFiles]);
+    setSecondaryImagePreviews((prev) => [...prev, ...nextPreviews]);
     setDirty(true);
   }
 
-  async function handleSecondaryImagesChange(files: FileList | null) {
-    if (!files?.length) return;
+  function removeSecondaryImage(id: string) {
+    setSecondaryImagePreviews((prev) => {
+      const found = prev.find((item) => item.id === id);
+      if (found) {
+        URL.revokeObjectURL(found.preview);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
 
-    const uploaded = await Promise.all(
-      Array.from(files).map((file) => uploadFile(file, false))
-    );
+    setSecondaryImageFiles((prev) => {
+      const previewEntry = secondaryImagePreviews.find((item) => item.id === id);
+      if (!previewEntry) return prev;
+      const index = prev.findIndex((file) => file === previewEntry.file);
+      if (index === -1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
 
-    setSecondaryImages((prev) => [...prev, ...uploaded]);
     setDirty(true);
   }
 
@@ -139,26 +176,37 @@ export default function AbilityNodeCreateForm() {
   }
 
   async function submit(status: "DRAFT" | "PUBLISHED") {
-    const payload: AbilityNodeCreatePayload = {
-      name,
-      slug,
-      type,
-      family: isAbilityType ? (family || null) : null,
-      shortDescription,
-      notes: notes.filter((note) => note.trim().length > 0).join("\n\n"),
-      hierarchyLevel: hierarchyLevel || null,
-      status,
-      isActive: status === "PUBLISHED",
-      mainImage,
-      secondaryImages,
-      parentId: selectedParent?.id ?? null,
-      childIds: childNodes.map((item) => item.id),
-      contentBlocks,
-    };
+    if (!mainImageFile) {
+      alert("Main image is required.");
+      return;
+    }
 
     setSaving(true);
 
     try {
+      const uploadedMainImage = await uploadFile(mainImageFile, true);
+
+      const uploadedSecondaryImages = await Promise.all(
+        secondaryImageFiles.map((file) => uploadFile(file, false))
+      );
+
+      const payload: AbilityNodeCreatePayload = {
+        name,
+        slug,
+        type,
+        family: isAbilityType ? (family || null) : null,
+        shortDescription,
+        notes: notes.filter((note) => note.trim().length > 0).join("\n\n"),
+        hierarchyLevel: hierarchyLevel || null,
+        status,
+        isActive: status === "PUBLISHED",
+        mainImage: uploadedMainImage,
+        secondaryImages: uploadedSecondaryImages,
+        parentId: selectedParent?.id ?? null,
+        childIds: childNodes.map((item) => item.id),
+        contentBlocks,
+      };
+
       const response = await fetch("/api/ability-nodes", {
         method: "POST",
         headers: {
@@ -171,8 +219,9 @@ export default function AbilityNodeCreateForm() {
         throw new Error("Failed to save ability node");
       }
 
+      const data = await response.json();
       setDirty(false);
-      router.push("/tiering-power/recorded-abilities/edit");
+      router.push(`/tiering-power/recorded-abilities/edit/${data.node.slug}`);
     } catch (error) {
       console.error(error);
       alert("Failed to save the node.");
@@ -183,6 +232,13 @@ export default function AbilityNodeCreateForm() {
 
   function handleDiscard() {
     if (!dirty) {
+      if (mainImagePreview) {
+        URL.revokeObjectURL(mainImagePreview);
+      }
+
+      secondaryImagePreviews.forEach((image) => {
+        URL.revokeObjectURL(image.preview);
+      });
       router.push("/tiering-power/recorded-abilities/edit");
       return;
     }
@@ -192,6 +248,13 @@ export default function AbilityNodeCreateForm() {
     );
 
     if (confirmed) {
+      if (mainImagePreview) {
+        URL.revokeObjectURL(mainImagePreview);
+      }
+
+      secondaryImagePreviews.forEach((image) => {
+        URL.revokeObjectURL(image.preview);
+      });
       router.push("/tiering-power/recorded-abilities/edit");
     }
   }
@@ -412,52 +475,129 @@ export default function AbilityNodeCreateForm() {
               setContentBlocks(next);
               setDirty(true);
             }}
-            availableImages={secondaryImages}
-          />
+            availableImages={secondaryImagePreviews.map((image) => ({
+                id: image.id,
+                url: image.preview,
+              }))}
+            />
         </div>
 
         <div className="space-y-6">
           <section className="rounded-[28px] border border-white/10 bg-black/20 p-5">
             <h2 className="text-2xl font-black text-white">Images</h2>
 
-            <div className="mt-5 space-y-5">
+            <div className="mt-5 space-y-6">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-white/75">
+                <p className="mb-3 text-sm font-semibold text-white/75">
                   Main image (required)
-                </label>
+                </p>
+
                 <input
+                  ref={mainImageInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={(e) => void handleMainImageChange(e.target.files?.[0] ?? null)}
-                  className="block w-full text-sm text-white/80"
+                  onChange={(e) => handleMainImageSelection(e.target.files?.[0] ?? null)}
+                  className="hidden"
                 />
-                {mainImage ? (
-                  <p className="mt-2 text-xs text-cyan-100">{mainImage.url}</p>
-                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => mainImageInputRef.current?.click()}
+                  className="group flex min-h-[220px] w-full flex-col items-center justify-center rounded-[24px] border border-dashed border-cyan-300/25 bg-cyan-400/5 p-6 text-center transition hover:border-cyan-300/45 hover:bg-cyan-400/10"
+                >
+                  {mainImagePreview ? (
+                    <div className="w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={mainImagePreview}
+                        alt="Main preview"
+                        className="mx-auto max-h-[260px] rounded-2xl object-contain"
+                      />
+                      <p className="mt-4 text-sm font-semibold text-cyan-100">
+                        {mainImageFile?.name}
+                      </p>
+                      <p className="mt-1 text-xs text-white/50">
+                        Click to replace
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-4 text-lg font-black text-cyan-100">
+                        Add Main Image
+                      </div>
+                      <p className="max-w-sm text-sm leading-6 text-white/60">
+                        Select the primary image for this node. It will only upload when
+                        you save the entry as a draft or publish it.
+                      </p>
+                    </>
+                  )}
+                </button>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-white/75">
+                <p className="mb-3 text-sm font-semibold text-white/75">
                   Secondary images
-                </label>
+                </p>
+
                 <input
+                  ref={secondaryImageInputRef}
                   type="file"
                   accept="image/*"
                   multiple
-                  onChange={(e) => void handleSecondaryImagesChange(e.target.files)}
-                  className="block w-full text-sm text-white/80"
+                  onChange={(e) => handleSecondaryImageSelection(e.target.files)}
+                  className="hidden"
                 />
 
-                <div className="mt-4 space-y-2">
-                  {secondaryImages.map((image) => (
-                    <div
-                      key={image.id}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70"
-                    >
-                      {image.url}
-                    </div>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => secondaryImageInputRef.current?.click()}
+                  className="group flex min-h-[160px] w-full flex-col items-center justify-center rounded-[24px] border border-dashed border-fuchsia-300/25 bg-fuchsia-400/5 p-6 text-center transition hover:border-fuchsia-300/45 hover:bg-fuchsia-400/10"
+                >
+                  <div className="mb-4 text-lg font-black text-fuchsia-100">
+                    Add Secondary Images
+                  </div>
+                  <p className="max-w-sm text-sm leading-6 text-white/60">
+                    Add extra visuals for use in the description blocks. These files also
+                    wait locally until you save.
+                  </p>
+                </button>
+
+                {secondaryImagePreviews.length > 0 ? (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    {secondaryImagePreviews.map((image) => (
+                      <div
+                        key={image.id}
+                        className="rounded-2xl border border-white/10 bg-white/5 p-3"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={image.preview}
+                          alt={image.file.name}
+                          className="h-40 w-full rounded-xl object-cover"
+                        />
+
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-white/80">
+                              {image.file.name}
+                            </p>
+                            <p className="text-xs text-white/45">
+                              Waiting for save
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => removeSecondaryImage(image.id)}
+                            className="rounded-lg border border-rose-300/20 bg-rose-400/10 px-3 py-1 text-xs font-semibold text-rose-100 transition hover:bg-rose-400/20"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </div>
           </section>

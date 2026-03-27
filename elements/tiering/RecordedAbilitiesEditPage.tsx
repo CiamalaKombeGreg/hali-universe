@@ -55,8 +55,8 @@ export default function RecordedAbilitiesEditPage() {
               </p>
             </Link>
 
-            <button
-              type="button"
+            <Link
+              href="/tiering-power/recorded-abilities/edit/existing"
               className="group rounded-[28px] border border-fuchsia-300/15 bg-gradient-to-br from-fuchsia-500/20 to-pink-400/10 p-8 text-left shadow-[0_0_28px_rgba(217,70,239,0.10)] transition duration-300 hover:-translate-y-1 hover:border-fuchsia-300/35 hover:shadow-[0_0_34px_rgba(217,70,239,0.18)]"
             >
               <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100">
@@ -70,7 +70,7 @@ export default function RecordedAbilitiesEditPage() {
               <p className="mt-3 text-sm leading-7 text-white/70">
                 Browse and update already recorded systems, branches, and abilities.
               </p>
-            </button>
+            </Link>
           </div>
         </div>
       </div>

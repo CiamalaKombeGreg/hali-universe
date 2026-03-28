@@ -39,13 +39,13 @@ model AbilityNode {
   type   AbilityNodeType
   status AbilityNodeStatus @default(DRAFT)
 
-  family           AbilityFamilyType?
-  shortDescription String?
-  notes            String?
-  hierarchyLevel   String?
-  isActive         Boolean            @default(false)
+  family                AbilityFamilyType?
+  shortDescriptionParts Json?
+  notes                 Json?
+  hierarchyLevel        String?
+  isActive              Boolean            @default(false)
 
-  contentBlocks Json?
+  contentSections Json?
 
   parentId String?
   parent   AbilityNode?  @relation("AbilityTree", fields: [parentId], references: [id], onDelete: SetNull)

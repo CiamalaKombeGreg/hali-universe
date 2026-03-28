@@ -7,8 +7,8 @@ type Payload = {
   slug: string;
   type: string;
   family?: string | null;
-  shortDescription?: string;
-  notes?: string;
+  shortDescriptionParts: Prisma.InputJsonValue;
+  notes: Prisma.InputJsonValue;
   hierarchyLevel?: string | null;
   status: "DRAFT" | "PUBLISHED";
   isActive: boolean;
@@ -24,7 +24,7 @@ type Payload = {
   }[];
   parentId?: string | null;
   childIds: string[];
-  contentBlocks: Prisma.InputJsonValue;
+  contentSections: Prisma.InputJsonValue;
 };
 
 export async function POST(request: Request) {
@@ -48,10 +48,29 @@ export async function POST(request: Request) {
       body.type === "SUBSYSTEM" ||
       body.type === "ASSOCIATION_SYSTEM";
 
-    if (requiresChildAbility && body.status === "PUBLISHED" && body.childIds.length === 0) {
+    if (
+      requiresChildAbility &&
+      body.status === "PUBLISHED" &&
+      body.childIds.length === 0
+    ) {
       return NextResponse.json(
-        { error: "Published systems and sub-systems require at least one child ability or node." },
+        {
+          error:
+            "Published systems and sub-systems require at least one child ability or node.",
+        },
         { status: 400 }
+      );
+    }
+
+    const existingSlug = await prisma.abilityNode.findUnique({
+      where: { slug: body.slug },
+      select: { id: true },
+    });
+
+    if (existingSlug) {
+      return NextResponse.json(
+        { error: "A node with this slug already exists." },
+        { status: 409 }
       );
     }
 
@@ -85,14 +104,14 @@ export async function POST(request: Request) {
           name: body.name,
           slug: body.slug,
           type: body.type as never,
-          family: body.family ? (body.family as never) : undefined,
-          shortDescription: body.shortDescription,
+          family: body.family ? (body.family as never) : null,
+          shortDescriptionParts: body.shortDescriptionParts,
           notes: body.notes,
-          hierarchyLevel: body.hierarchyLevel,
+          hierarchyLevel: body.hierarchyLevel ?? null,
           status: body.status,
           isActive: body.isActive,
-          parentId: body.parentId ?? undefined,
-          contentBlocks: body.contentBlocks,
+          parentId: body.parentId ?? null,
+          contentSections: body.contentSections,
           mainImageId: mainImageRecord.id,
           images: {
             connect: [
@@ -116,7 +135,31 @@ export async function POST(request: Request) {
         });
       }
 
-      return node;
+      return tx.abilityNode.findUnique({
+        where: { id: node.id },
+        include: {
+          mainImage: true,
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              type: true,
+            },
+          },
+          children: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              type: true,
+            },
+            orderBy: {
+              name: "asc",
+            },
+          },
+        },
+      });
     });
 
     return NextResponse.json({ success: true, node: created });

@@ -10,6 +10,7 @@ type SearchResult = {
   id: string;
   name: string;
   slug: string;
+  status: "DRAFT" | "PUBLISHED";
   type: string;
   family: string | null;
   hierarchyLevel: string | null;
@@ -157,7 +158,11 @@ export default function ExistingAbilitySearchPage() {
                 {results.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between gap-4 rounded-[22px] border border-white/10 bg-black/20 p-4"
+                    className={`flex items-center justify-between gap-4 rounded-[22px] border p-4 ${
+                      item.status === "DRAFT"
+                        ? "border-yellow-300/20 bg-yellow-400/8"
+                        : "border-white/10 bg-black/20"
+                    }`}
                   >
                     <div className="flex min-w-0 items-center gap-4">
                       <div className="h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
@@ -183,26 +188,38 @@ export default function ExistingAbilitySearchPage() {
                           {item.type}
                           {item.family ? ` • ${item.family}` : ""}
                           {item.hierarchyLevel ? ` • ${item.hierarchyLevel}` : ""}
+                          {item.status ? ` • ${item.status}` : ""}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Link
-                        href={`/tiering-power/recorded-abilities/edit/${item.slug}`}
-                        className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100 transition hover:bg-cyan-400/20"
-                        title="Open info page"
-                      >
-                        <CircleHelp className="h-5 w-5" />
-                      </Link>
+                      {item.status === "PUBLISHED" ? (
+                        <Link
+                          href={`/tiering-power/recorded-abilities/edit/${item.slug}`}
+                          className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100 transition hover:bg-cyan-400/20"
+                          title="Open info page"
+                        >
+                          <CircleHelp className="h-5 w-5" />
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          className="flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-xl border border-yellow-300/20 bg-yellow-400/10 text-yellow-100/50"
+                          title="Drafts cannot be displayed"
+                        >
+                          <CircleHelp className="h-5 w-5" />
+                        </button>
+                      )}
 
-                      <button
-                        type="button"
+                      <Link
+                        href={`/tiering-power/recorded-abilities/edit/${item.slug}/edit`}
                         className="flex h-11 w-11 items-center justify-center rounded-xl border border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100 transition hover:bg-fuchsia-400/20"
                         title="Edit node"
                       >
                         <PenSquare className="h-5 w-5" />
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 ))}

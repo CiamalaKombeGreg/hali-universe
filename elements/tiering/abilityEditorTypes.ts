@@ -1,3 +1,75 @@
+export type InlineTextPart = {
+  id: string;
+  text: string;
+  bold?: boolean;
+  underline?: boolean;
+  referenceType?: "ABILITY_NODE" | "PAGE";
+  referenceId?: string;
+  referenceLabel?: string;
+  referencePath?: string;
+};
+
+export type RichListItem = {
+  id: string;
+  parts: InlineTextPart[];
+};
+
+export type SubtitleBlock = {
+  id: string;
+  type: "subtitle";
+  text: string;
+};
+
+export type TextBlock = {
+  id: string;
+  type: "text";
+  parts: InlineTextPart[];
+};
+
+export type ListBlock = {
+  id: string;
+  type: "list";
+  items: RichListItem[];
+};
+
+export type ImageBlock = {
+  id: string;
+  type: "image";
+  imageId: string;
+  imageUrl: string;
+  storageKey?: string;
+  caption?: string;
+  framed: boolean;
+  localFile?: File | null;
+};
+
+export type TableCell = {
+  id: string;
+  kind: "value" | "empty";
+  value: string;
+};
+
+export type TableBlock = {
+  id: string;
+  type: "table";
+  rows: number;
+  cols: number;
+  cells: TableCell[][];
+};
+
+export type SectionItem =
+  | SubtitleBlock
+  | TextBlock
+  | ListBlock
+  | ImageBlock
+  | TableBlock;
+
+export type ContentSection = {
+  id: string;
+  title: string;
+  items: SectionItem[];
+};
+
 export type AbilityNodeTypeValue =
   | "SYSTEM"
   | "SUBSYSTEM"
@@ -16,63 +88,6 @@ export type AbilityFamilyValue =
   | "DIMENSIONAL_MOVEMENT"
   | "DEFENSE_NEGATION"
   | "UTILITY_SUPPORT";
-  
-export type InlineTextPart = {
-  id: string;
-  text: string;
-  bold?: boolean;
-  underline?: boolean;
-  referenceType?: "ABILITY_NODE" | "PAGE";
-  referenceId?: string;
-  referenceLabel?: string;
-  referencePath?: string;
-};
-
-export type TextBlock = {
-  id: string;
-  type: "text";
-  title?: string;
-  parts: InlineTextPart[];
-};
-
-export type RichListItem = {
-  id: string;
-  parts: InlineTextPart[];
-};
-
-export type ListBlock = {
-  id: string;
-  type: "list";
-  title?: string;
-  items: RichListItem[];
-};
-
-export type ImageBlock = {
-  id: string;
-  type: "image";
-  title?: string;
-  imageId: string;
-  imageUrl: string;
-  caption?: string;
-  framed: boolean;
-};
-
-export type TableCell = {
-  id: string;
-  kind: "value" | "empty";
-  value: string;
-};
-
-export type TableBlock = {
-  id: string;
-  type: "table";
-  title?: string;
-  rows: number;
-  cols: number;
-  cells: TableCell[][];
-};
-
-export type ContentBlock = TextBlock | ListBlock | ImageBlock | TableBlock;
 
 export type UploadedImage = {
   id: string;
@@ -88,6 +103,7 @@ export type LinkedNodePreview = {
   name: string;
   slug: string;
   type: string;
+  status?: "DRAFT" | "PUBLISHED";
 };
 
 export type AbilityNodeCreatePayload = {
@@ -95,8 +111,8 @@ export type AbilityNodeCreatePayload = {
   slug: string;
   type: AbilityNodeTypeValue;
   family?: AbilityFamilyValue | null;
-  shortDescription?: string;
-  notes?: string;
+  shortDescriptionParts: InlineTextPart[];
+  notes: string[];
   hierarchyLevel?: string | null;
   status: "DRAFT" | "PUBLISHED";
   isActive: boolean;
@@ -104,5 +120,5 @@ export type AbilityNodeCreatePayload = {
   secondaryImages: UploadedImage[];
   parentId?: string | null;
   childIds: string[];
-  contentBlocks: ContentBlock[];
+  contentSections: ContentSection[];
 };

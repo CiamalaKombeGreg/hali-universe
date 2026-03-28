@@ -1,17 +1,40 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import DescriptionBlocksEditor from "./DescriptionBlocksEditor";
 import { abilityHierarchy } from "./recordedAbilitiesData";
 import type {
   AbilityFamilyValue,
   AbilityNodeCreatePayload,
   AbilityNodeTypeValue,
-  ContentBlock,
+  ContentSection,
+  InlineTextPart,
   LinkedNodePreview,
   UploadedImage,
 } from "./abilityEditorTypes";
+import DescriptionSectionsEditor from "./DescriptionSectionsEditor";
+
+type AbilityNodeFormInitialData = {
+  hierarchyLevel: string;
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  family?: string | null;
+  shortDescriptionParts: InlineTextPart[];
+  notes: string[];
+  status: "DRAFT" | "PUBLISHED";
+  isActive: boolean;
+  mainImage: UploadedImage | null;
+  contentSections: ContentSection[];
+  parent?: LinkedNodePreview | null;
+  children?: LinkedNodePreview[];
+};
+
+type AbilityNodeFormProps = {
+  mode?: "create" | "edit";
+  initialNode?: AbilityNodeFormInitialData;
+};
 
 function slugify(value: string) {
   return value
@@ -43,7 +66,10 @@ const families: { value: AbilityFamilyValue; label: string }[] = [
   { value: "UTILITY_SUPPORT", label: "Utility & Support" },
 ];
 
-export default function AbilityNodeCreateForm() {
+export default function AbilityNodeCreateForm({
+  mode = "create",
+  initialNode,
+}: AbilityNodeFormProps) {
   const router = useRouter();
 
   const [name, setName] = useState("");
@@ -52,24 +78,66 @@ export default function AbilityNodeCreateForm() {
   const [shortDescription, setShortDescription] = useState("");
   const [notes, setNotes] = useState<string[]>([""]);
   const [hierarchyLevel, setHierarchyLevel] = useState("");
-  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
+  const [contentSections, setContentSections] = useState<ContentSection[]>([]);
+
   const [mainImageFile, setMainImageFile] = useState<File | null>(null);
   const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
-  const [secondaryImageFiles, setSecondaryImageFiles] = useState<File[]>([]);
-  const [secondaryImagePreviews, setSecondaryImagePreviews] = useState<
-    { id: string; file: File; preview: string }[]
-  >([]);
+  const [existingMainImage, setExistingMainImage] = useState<UploadedImage | null>(null);
+
   const [parentSearch, setParentSearch] = useState("");
   const [parentResults, setParentResults] = useState<LinkedNodePreview[]>([]);
   const [selectedParent, setSelectedParent] = useState<LinkedNodePreview | null>(null);
+
   const [childSearch, setChildSearch] = useState("");
   const [childResults, setChildResults] = useState<LinkedNodePreview[]>([]);
   const [childNodes, setChildNodes] = useState<LinkedNodePreview[]>([]);
+
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const mainImageInputRef = useRef<HTMLInputElement | null>(null);
-  const secondaryImageInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (mode !== "edit" || !initialNode) return;
+
+    setName(initialNode.name ?? "");
+    setType(initialNode.type as AbilityNodeTypeValue);
+    setFamily((initialNode.family as AbilityFamilyValue | null) ?? "");
+
+    setShortDescription(
+      Array.isArray(initialNode.shortDescriptionParts)
+        ? initialNode.shortDescriptionParts.map((part) => part.text).join("")
+        : ""
+    );
+
+    setNotes(
+      Array.isArray(initialNode.notes) && initialNode.notes.length > 0
+        ? initialNode.notes
+        : [""]
+    );
+
+    setHierarchyLevel(initialNode.hierarchyLevel ?? "");
+
+    setContentSections(
+      Array.isArray(initialNode.contentSections)
+        ? structuredClone(initialNode.contentSections)
+        : []
+    );
+
+    setSelectedParent(initialNode.parent ?? null);
+    setParentSearch(initialNode.parent?.name ?? "");
+    setChildNodes(Array.isArray(initialNode.children) ? initialNode.children : []);
+
+    if (initialNode.mainImage?.url) {
+      setExistingMainImage(initialNode.mainImage);
+      setMainImagePreview(initialNode.mainImage.url);
+    } else {
+      setExistingMainImage(null);
+      setMainImagePreview(null);
+    }
+
+    setDirty(false);
+  }, [mode, initialNode]);
 
   const slug = useMemo(() => slugify(name), [name]);
 
@@ -80,11 +148,21 @@ export default function AbilityNodeCreateForm() {
   const canPublish = useMemo(() => {
     if (!name.trim()) return false;
     if (!slug) return false;
-    if (!mainImageFile) return false;
+    if (!mainImageFile && !mainImagePreview && !existingMainImage?.url) return false;
     if (isAbilityType && !family) return false;
     if (requiresChildAbility && childNodes.length === 0) return false;
     return true;
-  }, [name, slug, mainImageFile, isAbilityType, family, requiresChildAbility, childNodes]);
+  }, [
+    name,
+    slug,
+    mainImageFile,
+    mainImagePreview,
+    existingMainImage,
+    isAbilityType,
+    family,
+    requiresChildAbility,
+    childNodes.length,
+  ]);
 
   async function uploadFile(file: File, isPrimary: boolean) {
     const formData = new FormData();
@@ -112,60 +190,32 @@ export default function AbilityNodeCreateForm() {
   }
 
   function handleMainImageSelection(file: File | null) {
-  if (!file) return;
+    if (!file) return;
 
-  if (mainImagePreview) {
-    URL.revokeObjectURL(mainImagePreview);
-  }
+    if (mainImagePreview && mainImagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(mainImagePreview);
+    }
 
-  const preview = URL.createObjectURL(file);
-  setMainImageFile(file);
-  setMainImagePreview(preview);
-  setDirty(true);
-}
-
-  function handleSecondaryImageSelection(files: FileList | null) {
-    if (!files?.length) return;
-
-    const nextFiles = Array.from(files);
-    const nextPreviews = nextFiles.map((file) => ({
-      id: crypto.randomUUID(),
-      file,
-      preview: URL.createObjectURL(file),
-    }));
-
-    setSecondaryImageFiles((prev) => [...prev, ...nextFiles]);
-    setSecondaryImagePreviews((prev) => [...prev, ...nextPreviews]);
+    const preview = URL.createObjectURL(file);
+    setMainImageFile(file);
+    setMainImagePreview(preview);
+    setExistingMainImage(null);
     setDirty(true);
   }
 
-  function removeSecondaryImage(id: string) {
-    setSecondaryImagePreviews((prev) => {
-      const found = prev.find((item) => item.id === id);
-      if (found) {
-        URL.revokeObjectURL(found.preview);
-      }
-      return prev.filter((item) => item.id !== id);
-    });
-
-    setSecondaryImageFiles((prev) => {
-      const previewEntry = secondaryImagePreviews.find((item) => item.id === id);
-      if (!previewEntry) return prev;
-      const index = prev.findIndex((file) => file === previewEntry.file);
-      if (index === -1) return prev;
-      return prev.filter((_, i) => i !== index);
-    });
-
-    setDirty(true);
-  }
-
-  async function searchNodes(query: string, setter: (rows: LinkedNodePreview[]) => void) {
+  async function searchNodes(
+    query: string,
+    setter: (rows: LinkedNodePreview[]) => void
+  ) {
     if (!query.trim()) {
       setter([]);
       return;
     }
 
-    const response = await fetch(`/api/ability-nodes/search?q=${encodeURIComponent(query)}`);
+    const response = await fetch(
+      `/api/ability-nodes/search?q=${encodeURIComponent(query)}`
+    );
+
     if (!response.ok) {
       setter([]);
       return;
@@ -175,8 +225,76 @@ export default function AbilityNodeCreateForm() {
     setter(data.results ?? []);
   }
 
+  async function handleDelete() {
+    if (!initialNode?.slug) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to permanently delete this ability or system?"
+    );
+
+    if (!confirmed) return;
+
+    const response = await fetch(`/api/ability-nodes/${initialNode.slug}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      alert("Failed to delete.");
+      return;
+    }
+
+    router.push("/tiering-power/recorded-abilities/edit/existing");
+  }
+
+  async function uploadSectionImages(sections: ContentSection[]) {
+    const uploadedSecondaryImages: UploadedImage[] = [];
+    const nextSections: ContentSection[] = [];
+
+    for (const section of sections) {
+      const nextItems: ContentSection["items"] = [];
+
+      for (const item of section.items) {
+        if (item.type === "image" && item.localFile) {
+          const uploaded = await uploadFile(item.localFile, false);
+
+          uploadedSecondaryImages.push(uploaded);
+
+          nextItems.push({
+            ...item,
+            imageId: uploaded.id,
+            imageUrl: uploaded.url,
+            storageKey: uploaded.storageKey,
+            localFile: null,
+          });
+        } else {
+          if (item.type === "image" && item.imageUrl) {
+            uploadedSecondaryImages.push({
+              id: item.imageId || crypto.randomUUID(),
+              url: item.imageUrl,
+              storageKey: item.storageKey,
+              caption: item.caption,
+              isPrimary: false,
+            });
+          }
+
+          nextItems.push(item);
+        }
+      }
+
+      nextSections.push({
+        ...section,
+        items: nextItems,
+      });
+    }
+
+    return {
+      nextSections,
+      uploadedSecondaryImages,
+    };
+  }
+
   async function submit(status: "DRAFT" | "PUBLISHED") {
-    if (!mainImageFile) {
+    if (!mainImageFile && !existingMainImage) {
       alert("Main image is required.");
       return;
     }
@@ -184,19 +302,31 @@ export default function AbilityNodeCreateForm() {
     setSaving(true);
 
     try {
-      const uploadedMainImage = await uploadFile(mainImageFile, true);
+      const uploadedMainImage = mainImageFile
+        ? await uploadFile(mainImageFile, true)
+        : existingMainImage;
 
-      const uploadedSecondaryImages = await Promise.all(
-        secondaryImageFiles.map((file) => uploadFile(file, false))
-      );
+      if (!uploadedMainImage) {
+        throw new Error("Main image is required.");
+      }
+
+      const { nextSections, uploadedSecondaryImages } =
+        await uploadSectionImages(contentSections);
 
       const payload: AbilityNodeCreatePayload = {
         name,
         slug,
         type,
         family: isAbilityType ? (family || null) : null,
-        shortDescription,
-        notes: notes.filter((note) => note.trim().length > 0).join("\n\n"),
+        shortDescriptionParts: shortDescription.trim()
+          ? [
+              {
+                id: crypto.randomUUID(),
+                text: shortDescription,
+              },
+            ]
+          : [],
+        notes: notes.filter((note) => note.trim().length > 0),
         hierarchyLevel: hierarchyLevel || null,
         status,
         isActive: status === "PUBLISHED",
@@ -204,11 +334,18 @@ export default function AbilityNodeCreateForm() {
         secondaryImages: uploadedSecondaryImages,
         parentId: selectedParent?.id ?? null,
         childIds: childNodes.map((item) => item.id),
-        contentBlocks,
+        contentSections: nextSections,
       };
 
-      const response = await fetch("/api/ability-nodes", {
-        method: "POST",
+      const endpoint =
+        mode === "edit" && initialNode?.slug
+          ? `/api/ability-nodes/${initialNode.slug}`
+          : "/api/ability-nodes";
+
+      const method = mode === "edit" ? "PATCH" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -221,7 +358,12 @@ export default function AbilityNodeCreateForm() {
 
       const data = await response.json();
       setDirty(false);
-      router.push(`/tiering-power/recorded-abilities/edit/${data.node.slug}`);
+
+      if (status === "DRAFT") {
+        router.push("/tiering-power/recorded-abilities/edit/existing");
+      } else {
+        router.push(`/tiering-power/recorded-abilities/edit/${data.node.slug}`);
+      }
     } catch (error) {
       console.error(error);
       alert("Failed to save the node.");
@@ -232,13 +374,9 @@ export default function AbilityNodeCreateForm() {
 
   function handleDiscard() {
     if (!dirty) {
-      if (mainImagePreview) {
+      if (mainImagePreview && mainImagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(mainImagePreview);
       }
-
-      secondaryImagePreviews.forEach((image) => {
-        URL.revokeObjectURL(image.preview);
-      });
       router.push("/tiering-power/recorded-abilities/edit");
       return;
     }
@@ -248,13 +386,9 @@ export default function AbilityNodeCreateForm() {
     );
 
     if (confirmed) {
-      if (mainImagePreview) {
+      if (mainImagePreview && mainImagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(mainImagePreview);
       }
-
-      secondaryImagePreviews.forEach((image) => {
-        URL.revokeObjectURL(image.preview);
-      });
       router.push("/tiering-power/recorded-abilities/edit");
     }
   }
@@ -262,10 +396,18 @@ export default function AbilityNodeCreateForm() {
   return (
     <div className="space-y-6">
       <section className="sticky top-6 z-[200] rounded-[24px] border border-white/15 bg-[#0b1020]/90 p-4 backdrop-blur-xl">
+        <div className="my-2 inline-flex rounded-full border border-yellow-300/20 bg-yellow-400/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-yellow-100">
+          Status: {mode === "edit" ? (initialNode?.status ?? "DRAFT") : "NEW"}
+        </div>
+
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            disabled={!canPublish || saving}
+            disabled={
+              mode === "edit"
+                ? !dirty || !canPublish || saving
+                : !canPublish || saving
+            }
             onClick={() => submit("PUBLISHED")}
             className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-5 py-3 text-sm font-bold text-emerald-100 transition disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -274,20 +416,34 @@ export default function AbilityNodeCreateForm() {
 
           <button
             type="button"
-            disabled={!name.trim() || !slug || saving}
+            disabled={
+              mode === "edit"
+                ? !dirty || !name.trim() || !slug || saving
+                : !name.trim() || !slug || saving
+            }
             onClick={() => submit("DRAFT")}
             className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-5 py-3 text-sm font-bold text-cyan-100 transition disabled:cursor-not-allowed disabled:opacity-40"
           >
             Draft
           </button>
 
-          <button
-            type="button"
-            onClick={handleDiscard}
-            className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-5 py-3 text-sm font-bold text-rose-100 transition"
-          >
-            Discard
-          </button>
+          {mode === "edit" ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-5 py-3 text-sm font-bold text-rose-100 transition hover:bg-rose-400/20"
+            >
+              Delete
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleDiscard}
+              className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-5 py-3 text-sm font-bold text-rose-100 transition hover:bg-rose-400/20"
+            >
+              Discard
+            </button>
+          )}
         </div>
       </section>
 
@@ -348,6 +504,7 @@ export default function AbilityNodeCreateForm() {
                 >
                   Family {isAbilityType ? "*" : "(disabled for systems)"}
                 </label>
+
                 <div className="relative">
                   <select
                     value={family}
@@ -356,11 +513,11 @@ export default function AbilityNodeCreateForm() {
                       setFamily(e.target.value as AbilityFamilyValue);
                       setDirty(true);
                     }}
-                    className={`form-select-dark w-full rounded-2xl px-4 py-3 outline-none transition
-                                ${!isAbilityType
-                                  ? "opacity-40 cursor-not-allowed bg-white/5 text-white/40 border-white/5"
-                                  : "text-white hover:border-fuchsia-400/40"}
-                              `}
+                    className={`form-select-dark w-full rounded-2xl px-4 py-3 outline-none transition ${
+                      !isAbilityType
+                        ? "cursor-not-allowed border-white/5 bg-white/5 text-white/40 opacity-40"
+                        : "text-white hover:border-fuchsia-400/40"
+                    }`}
                   >
                     <option value="">Select a family</option>
                     {families.map((option) => (
@@ -369,7 +526,7 @@ export default function AbilityNodeCreateForm() {
                       </option>
                     ))}
                   </select>
-                  </div>
+                </div>
               </div>
 
               <div className="md:col-span-2">
@@ -388,63 +545,65 @@ export default function AbilityNodeCreateForm() {
               </div>
 
               <div className="md:col-span-2">
-  <div className="mb-3 flex items-center justify-between">
-    <label className="block text-sm font-semibold text-white/75">
-      Notes
-    </label>
+                <div className="mb-3 flex items-center justify-between">
+                  <label className="block text-sm font-semibold text-white/75">
+                    Notes
+                  </label>
 
-    <button
-      type="button"
-      onClick={() => {
-        setNotes((prev) => [...prev, ""]);
-        setDirty(true);
-      }}
-      className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20"
-    >
-      Add note
-    </button>
-  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotes((prev) => [...prev, ""]);
+                      setDirty(true);
+                    }}
+                    className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20"
+                  >
+                    Add note
+                  </button>
+                </div>
 
-  <div className="space-y-3">
-    {notes.map((note, index) => (
-      <div
-        key={index}
-        className="rounded-2xl border border-white/10 bg-white/5 p-3"
-      >
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-white/45">
-            Note {index + 1}
-          </span>
+                <div className="space-y-3">
+                  {notes.map((note, index) => (
+                    <div
+                      key={index}
+                      className="rounded-2xl border border-white/10 bg-white/5 p-3"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-[0.16em] text-white/45">
+                          Note {index + 1}
+                        </span>
 
-          {notes.length > 1 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setNotes((prev) => prev.filter((_, i) => i !== index));
-                setDirty(true);
-              }}
-              className="rounded-lg border border-rose-300/20 bg-rose-400/10 px-2 py-1 text-[11px] font-semibold text-rose-100 transition hover:bg-rose-400/20"
-            >
-              Remove
-            </button>
-          ) : null}
-        </div>
+                        {notes.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNotes((prev) => prev.filter((_, i) => i !== index));
+                              setDirty(true);
+                            }}
+                            className="rounded-lg border border-rose-300/20 bg-rose-400/10 px-2 py-1 text-[11px] font-semibold text-rose-100 transition hover:bg-rose-400/20"
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
 
-        <textarea
-          value={note}
-          onChange={(e) => {
-            const value = e.target.value;
-            setNotes((prev) => prev.map((item, i) => (i === index ? value : item)));
-            setDirty(true);
-          }}
-          rows={3}
-          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none"
-          placeholder={`Write note ${index + 1}...`}
-        />
-      </div>
-    ))}
-  </div>
-</div>
+                      <textarea
+                        value={note}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setNotes((prev) =>
+                            prev.map((item, i) => (i === index ? value : item))
+                          );
+                          setDirty(true);
+                        }}
+                        rows={3}
+                        className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none"
+                        placeholder={`Write note ${index + 1}...`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-white/75">
@@ -469,17 +628,13 @@ export default function AbilityNodeCreateForm() {
             </div>
           </section>
 
-          <DescriptionBlocksEditor
-            blocks={contentBlocks}
+          <DescriptionSectionsEditor
+            sections={contentSections}
             onChange={(next) => {
-              setContentBlocks(next);
+              setContentSections(next);
               setDirty(true);
             }}
-            availableImages={secondaryImagePreviews.map((image) => ({
-                id: image.id,
-                url: image.preview,
-              }))}
-            />
+          />
         </div>
 
         <div className="space-y-6">
@@ -514,11 +669,9 @@ export default function AbilityNodeCreateForm() {
                         className="mx-auto max-h-[260px] rounded-2xl object-contain"
                       />
                       <p className="mt-4 text-sm font-semibold text-cyan-100">
-                        {mainImageFile?.name}
+                        {mainImageFile?.name ?? "Existing main image"}
                       </p>
-                      <p className="mt-1 text-xs text-white/50">
-                        Click to replace
-                      </p>
+                      <p className="mt-1 text-xs text-white/50">Click to replace</p>
                     </div>
                   ) : (
                     <>
@@ -532,72 +685,6 @@ export default function AbilityNodeCreateForm() {
                     </>
                   )}
                 </button>
-              </div>
-
-              <div>
-                <p className="mb-3 text-sm font-semibold text-white/75">
-                  Secondary images
-                </p>
-
-                <input
-                  ref={secondaryImageInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => handleSecondaryImageSelection(e.target.files)}
-                  className="hidden"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => secondaryImageInputRef.current?.click()}
-                  className="group flex min-h-[160px] w-full flex-col items-center justify-center rounded-[24px] border border-dashed border-fuchsia-300/25 bg-fuchsia-400/5 p-6 text-center transition hover:border-fuchsia-300/45 hover:bg-fuchsia-400/10"
-                >
-                  <div className="mb-4 text-lg font-black text-fuchsia-100">
-                    Add Secondary Images
-                  </div>
-                  <p className="max-w-sm text-sm leading-6 text-white/60">
-                    Add extra visuals for use in the description blocks. These files also
-                    wait locally until you save.
-                  </p>
-                </button>
-
-                {secondaryImagePreviews.length > 0 ? (
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    {secondaryImagePreviews.map((image) => (
-                      <div
-                        key={image.id}
-                        className="rounded-2xl border border-white/10 bg-white/5 p-3"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={image.preview}
-                          alt={image.file.name}
-                          className="h-40 w-full rounded-xl object-cover"
-                        />
-
-                        <div className="mt-3 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-white/80">
-                              {image.file.name}
-                            </p>
-                            <p className="text-xs text-white/45">
-                              Waiting for save
-                            </p>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => removeSecondaryImage(image.id)}
-                            className="rounded-lg border border-rose-300/20 bg-rose-400/10 px-3 py-1 text-xs font-semibold text-rose-100 transition hover:bg-rose-400/20"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
               </div>
             </div>
           </section>
@@ -646,7 +733,8 @@ export default function AbilityNodeCreateForm() {
           <section className="rounded-[28px] border border-white/10 bg-black/20 p-5">
             <h2 className="text-2xl font-black text-white">Child abilities / systems</h2>
             <p className="mt-2 text-sm leading-6 text-white/60">
-              For systems and sub-systems, at least one linked child is required before publishing.
+              For systems and sub-systems, at least one linked child is required before
+              publishing.
             </p>
 
             <input
@@ -692,7 +780,9 @@ export default function AbilityNodeCreateForm() {
                   <button
                     type="button"
                     onClick={() => {
-                      setChildNodes((prev) => prev.filter((entry) => entry.id !== item.id));
+                      setChildNodes((prev) =>
+                        prev.filter((entry) => entry.id !== item.id)
+                      );
                       setDirty(true);
                     }}
                     className="rounded-lg border border-rose-300/20 bg-rose-400/10 px-3 py-1 text-rose-100"

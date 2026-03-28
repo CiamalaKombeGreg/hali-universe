@@ -1,51 +1,93 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  recordedAbilitiesSearchIndex,
-  type RecordedAbilitiesSearchResult,
-} from "./recordedAbilitiesSearchData";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { SearchResultLike } from "./sharedSearchTypes";
 
+type AbilitySearchResult = SearchResultLike & {
+  id: string;
+  slug: string;
+};
+
 function normalize(value: string) {
-  return value.trim().toLowerCase();
+  return value.trim();
 }
 
 export function useRecordedAbilitiesSearch() {
-  const [query, setQuery] = useState("");
+  const router = useRouter();
 
-  const results = useMemo(() => {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<AbilitySearchResult[]>([]);
+
+  useEffect(() => {
     const normalized = normalize(query);
 
     if (!normalized) {
-      return [];
+      setResults([]);
+      return;
     }
 
-    return recordedAbilitiesSearchIndex
-      .filter((item) => {
-        if (item.label.toLowerCase().includes(normalized)) {
-          return true;
+    const controller = new AbortController();
+
+    async function run() {
+      try {
+        const params = new URLSearchParams();
+        params.set("q", normalized);
+        params.set("public", "1");
+
+        const response = await fetch(
+          `/api/ability-nodes/filter?${params.toString()}`,
+          {
+            signal: controller.signal,
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch recorded abilities search results");
         }
 
-        return item.keywords.some((keyword) =>
-          keyword.toLowerCase().includes(normalized)
+        const data = await response.json();
+
+        const mapped: AbilitySearchResult[] = (data.results ?? []).map(
+          (item: {
+            id: string;
+            name: string;
+            slug: string;
+            type: string;
+            family?: string | null;
+            hierarchyLevel?: string | null;
+          }) => ({
+            id: item.id,
+            slug: item.slug,
+            label: item.name,
+            targetId: item.slug,
+            keywords: [
+              item.type,
+              item.family ?? "",
+              item.hierarchyLevel ?? "",
+            ].filter(Boolean),
+          })
         );
-      })
-      .slice(0, 8);
+
+        setResults(mapped.slice(0, 8));
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error(error);
+          setResults([]);
+        }
+      }
+    }
+
+    void run();
+
+    return () => controller.abort();
   }, [query]);
 
   const clear = () => setQuery("");
 
-    const goToResult = (result: SearchResultLike) => {
-    const element = document.getElementById(result.targetId);
-
-    if (element) {
-      element.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }
-
+  const goToResult = (result: SearchResultLike) => {
+    const wikiResult = result as AbilitySearchResult;
+    router.push(`/tiering-power/recorded-abilities/${wikiResult.slug}`);
     setQuery("");
   };
 

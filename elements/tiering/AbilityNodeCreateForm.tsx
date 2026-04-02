@@ -6,30 +6,13 @@ import { abilityHierarchy } from "./recordedAbilitiesData";
 import type {
   AbilityFamilyValue,
   AbilityNodeCreatePayload,
+  AbilityNodeFormInitialData,
   AbilityNodeTypeValue,
   ContentSection,
-  InlineTextPart,
   LinkedNodePreview,
   UploadedImage,
 } from "./abilityEditorTypes";
 import DescriptionSectionsEditor from "./DescriptionSectionsEditor";
-
-type AbilityNodeFormInitialData = {
-  hierarchyLevel: string;
-  id: string;
-  name: string;
-  slug: string;
-  type: string;
-  family?: string | null;
-  shortDescriptionParts: InlineTextPart[];
-  notes: string[];
-  status: "DRAFT" | "PUBLISHED";
-  isActive: boolean;
-  mainImage: UploadedImage | null;
-  contentSections: ContentSection[];
-  parent?: LinkedNodePreview | null;
-  children?: LinkedNodePreview[];
-};
 
 type AbilityNodeFormProps = {
   mode?: "create" | "edit";

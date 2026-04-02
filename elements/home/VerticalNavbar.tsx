@@ -13,6 +13,8 @@ import {
   BarChart3,
   WandSparkles,
   MessagesSquare,
+  Library,
+  Images,
 } from "lucide-react";
 import { FaDiscord, FaYoutube } from "react-icons/fa";
 
@@ -27,7 +29,16 @@ const navItems = [
       { label: "Recorded Abilities", href: "/tiering-power/recorded-abilities", icon: WandSparkles },
     ],
   },
-  { label: "Universe", href: "/universe", icon: Orbit },
+  { label: "Universe",
+    href: "/universe",
+    icon: Orbit,
+    subItems: [
+      { label: "Universes Manager", href: "/universe/manage", icon: Orbit },
+      { label: "Lorebook & stories", href: "/universe/lorebook", icon: Library },
+      { label: "Wiki", href: "/universe/wiki", icon: BookOpen },
+      { label: "Gallery", href: "/universe/gallery", icon: Images },
+    ],
+  },
   { label: "Characters", href: "/characters", icon: Users },
   { label: "Battle Mode", href: "/battle-mode", icon: Swords },
   { label: "Leaderboard", href: "/leaderboard", icon: Trophy },
@@ -63,7 +74,7 @@ export default function VerticalNavbar() {
               <div key={item.label} className="flex flex-col items-center gap-2">
                 <Link
                   href={item.href}
-                  className={`group relative z-[520] flex h-12 w-12 items-center justify-center rounded-2xl border text-white/80 transition duration-300 hover:scale-105 ${
+                  className={`group relative z-[520] flex h-10 w-10 items-center justify-center rounded-2xl border text-white/80 transition duration-300 hover:scale-105 ${
                     isActive
                       ? "border-fuchsia-400/60 bg-gradient-to-br from-fuchsia-500/30 to-cyan-400/20 text-white shadow-[0_0_24px_rgba(217,70,239,0.25)]"
                       : "border-white/10 bg-white/5 hover:border-fuchsia-400/50 hover:bg-white/10 hover:text-white"

@@ -122,3 +122,20 @@ export type AbilityNodeCreatePayload = {
   childIds: string[];
   contentSections: ContentSection[];
 };
+
+export type AbilityNodeFormInitialData = {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  family?: string | null;
+  shortDescriptionParts: InlineTextPart[];
+  notes: string[];
+  hierarchyLevel?: string | null;
+  status: "DRAFT" | "PUBLISHED";
+  isActive: boolean;
+  mainImage: UploadedImage | null;
+  contentSections: ContentSection[];
+  parent?: LinkedNodePreview | null;
+  children?: LinkedNodePreview[];
+};

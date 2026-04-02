@@ -32,6 +32,138 @@ enum AbilityNodeStatus {
   PUBLISHED
 }
 
+enum WorldEntryType {
+  UNIVERSE
+  SERIES_COLLECTION
+  CONTINUITY
+  INSTALLMENT
+  SPINOFF
+  FANMADE
+  ORIGINAL_CREATION
+  CROSSOVER
+}
+
+enum WorldCanonStatus {
+  CANON
+  SEMI_CANON
+  NON_CANON
+  ALTERNATE_CANON
+}
+
+enum WorldCosmologyType {
+  SINGLE_UNIVERSE
+  MULTIVERSE
+  COMPLEX_MULTIVERSE
+  HIGHER_DIMENSIONAL_STRUCTURE
+}
+
+enum WorldVisibilityStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model WorldEntry {
+  id               String                @id @default(cuid())
+  name             String
+  slug             String                @unique
+  description      String?
+  summary          String?
+  type             WorldEntryType
+  canonStatus      WorldCanonStatus?
+  cosmologyType    WorldCosmologyType?
+  visibilityStatus WorldVisibilityStatus @default(DRAFT)
+  isPublished      Boolean               @default(false)
+
+  sourceNote        String?
+  installmentOrder  Int?
+  installmentCode   String?
+  inspirationNote   String?
+  officialPublisher String?
+  creator           String?
+  branchDescription String?
+  divergenceNote    String?
+  approvalNote      String?
+  sourceSeriesNote  String?
+
+  isStandaloneContainer   Boolean?
+  allowOriginalCreations  Boolean?
+  allowOfficialSeries     Boolean?
+  hasMultipleContinuities Boolean?
+  isFullyIndependent      Boolean?
+  officialCrossover       Boolean?
+
+  parentId String?
+  parent   WorldEntry?  @relation("WorldEntryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children WorldEntry[] @relation("WorldEntryHierarchy")
+
+  bannerImageId String?           @unique
+  bannerImage   WorldEntryImage?  @relation("WorldEntryBanner", fields: [bannerImageId], references: [id], onDelete: SetNull)
+  images        WorldEntryImage[] @relation("WorldEntryImages")
+
+  tags            WorldEntryTag[]
+  linkedAbilities WorldEntryAbility[]
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  crossoverSources WorldEntrySource[] @relation("WorldEntrySourceOwner")
+  usedInCrossovers WorldEntrySource[] @relation("WorldEntrySourceTarget")
+
+  @@index([type])
+  @@index([parentId])
+  @@index([visibilityStatus])
+}
+
+model WorldEntryImage {
+  id         String  @id @default(cuid())
+  url        String
+  storageKey String?
+  caption    String?
+  altText    String?
+  isPrimary  Boolean @default(false)
+  sortOrder  Int     @default(0)
+
+  bannerFor    WorldEntry? @relation("WorldEntryBanner")
+  worldEntryId String?
+  worldEntry   WorldEntry? @relation("WorldEntryImages", fields: [worldEntryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model WorldEntryTag {
+  id           String     @id @default(cuid())
+  label        String
+  worldEntryId String
+  worldEntry   WorldEntry @relation(fields: [worldEntryId], references: [id], onDelete: Cascade)
+
+  @@index([worldEntryId])
+}
+
+model WorldEntrySource {
+  id            String @id @default(cuid())
+  worldEntryId  String
+  sourceEntryId String
+
+  worldEntry  WorldEntry @relation("WorldEntrySourceOwner", fields: [worldEntryId], references: [id], onDelete: Cascade)
+  sourceEntry WorldEntry @relation("WorldEntrySourceTarget", fields: [sourceEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([worldEntryId, sourceEntryId])
+  @@index([worldEntryId])
+  @@index([sourceEntryId])
+}
+
+model WorldEntryAbility {
+  id            String @id @default(cuid())
+  worldEntryId  String
+  abilityNodeId String
+
+  worldEntry  WorldEntry  @relation(fields: [worldEntryId], references: [id], onDelete: Cascade)
+  abilityNode AbilityNode @relation(fields: [abilityNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([worldEntryId, abilityNodeId])
+  @@index([worldEntryId])
+  @@index([abilityNodeId])
+}
+
 model AbilityNode {
   id     String            @id @default(cuid())
   name   String
@@ -58,8 +190,9 @@ model AbilityNode {
   mainImage   AbilityNodeImage?  @relation("MainAbilityImage", fields: [mainImageId], references: [id], onDelete: SetNull)
   images      AbilityNodeImage[] @relation("AbilityNodeImages")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  worldEntryAbilities WorldEntryAbility[]
 
   @@index([type])
   @@index([family])

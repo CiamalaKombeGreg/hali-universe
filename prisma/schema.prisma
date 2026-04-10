@@ -62,6 +62,207 @@ enum WorldVisibilityStatus {
   PUBLISHED
 }
 
+enum LocationType {
+  WORLD
+  PLANET
+  CONTINENT
+  COUNTRY
+  REGION
+  CITY
+  BUILDING
+  ARENA
+  REALM
+  POCKET_DIMENSION
+  CONCEPTUAL_SPACE
+}
+
+enum LocationOriginType {
+  ORIGINAL
+  CANON
+  SPINOFF_DERIVED
+}
+
+enum ArchiveEntryType {
+  LOREBOOK
+  NOVEL
+}
+
+enum ArchiveVisibilityStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum NovelChapterStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum GalleryImageSourceType {
+  UPLOADED
+  EXTERNAL
+}
+
+model GalleryPortfolio {
+  id        String         @id @default(cuid())
+  name      String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  images    GalleryImage[]
+
+  @@index([name])
+}
+
+model GalleryImage {
+  id          String           @id @default(cuid())
+  portfolioId String
+  portfolio   GalleryPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  title        String?
+  altText      String?
+  externalLink String?
+
+  sourceType GalleryImageSourceType
+  imageUrl   String
+  storageKey String?
+
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portfolioId, sortOrder])
+  @@index([title])
+  @@index([altText])
+}
+
+model ArchiveImage {
+  id         String   @id @default(cuid())
+  url        String
+  storageKey String?
+  caption    String?
+  altText    String?
+  isPrimary  Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  lorebookCoverFor Lorebook?     @relation("LorebookCover")
+  novelCoverFor    Novel?        @relation("NovelCover")
+  chapterCoverFor  NovelChapter? @relation("NovelChapterCover")
+}
+
+model Lorebook {
+  id               String                  @id @default(cuid())
+  title            String
+  slug             String                  @unique
+  description      String?
+  visibilityStatus ArchiveVisibilityStatus @default(DRAFT)
+  isPublished      Boolean                 @default(false)
+
+  coverImageId String?       @unique
+  coverImage   ArchiveImage? @relation("LorebookCover", fields: [coverImageId], references: [id], onDelete: SetNull)
+
+  contentSections    Json?
+  linkedWorldIds     Json?
+  linkedLocationIds  Json?
+  linkedCharacterIds Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Novel {
+  id               String                  @id @default(cuid())
+  title            String
+  slug             String                  @unique
+  authorName       String
+  summary          String?
+  visibilityStatus ArchiveVisibilityStatus @default(DRAFT)
+  isPublished      Boolean                 @default(false)
+
+  coverImageId String?       @unique
+  coverImage   ArchiveImage? @relation("NovelCover", fields: [coverImageId], references: [id], onDelete: SetNull)
+
+  tags          Json?
+  linkedWorldId String?
+  linkedWorld   WorldEntry? @relation(fields: [linkedWorldId], references: [id], onDelete: SetNull)
+
+  chapters NovelChapter[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NovelChapter {
+  id      String @id @default(cuid())
+  novelId String
+  novel   Novel  @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  title      String
+  slug       String
+  subtitle   String?
+  orderIndex Int
+  status     NovelChapterStatus @default(DRAFT)
+
+  coverImageId String?       @unique
+  coverImage   ArchiveImage? @relation("NovelChapterCover", fields: [coverImageId], references: [id], onDelete: SetNull)
+
+  contentBlocks Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([novelId, slug])
+  @@unique([novelId, orderIndex])
+}
+
+model LocationEntry {
+  id             String             @id @default(cuid())
+  name           String
+  slug           String             @unique
+  description    String?
+  locationType   LocationType
+  originType     LocationOriginType
+  canonStatus    WorldCanonStatus?
+  orderIndex     Int?
+  coordinateNote String?
+
+  infoSections Json?
+  notes        Json?
+
+  parentWorldId String?
+  parentWorld   WorldEntry? @relation("WorldEntryLocations", fields: [parentWorldId], references: [id], onDelete: Cascade)
+
+  parentLocationId String?
+  parentLocation   LocationEntry?  @relation("LocationHierarchy", fields: [parentLocationId], references: [id], onDelete: Cascade)
+  children         LocationEntry[] @relation("LocationHierarchy")
+
+  bannerImageId String?         @unique
+  bannerImage   LocationImage?  @relation("LocationBanner", fields: [bannerImageId], references: [id], onDelete: SetNull)
+  images        LocationImage[] @relation("LocationImages")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentWorldId])
+  @@index([parentLocationId])
+  @@index([locationType])
+}
+
+model LocationImage {
+  id         String  @id @default(cuid())
+  url        String
+  storageKey String?
+  caption    String?
+  altText    String?
+  isPrimary  Boolean @default(false)
+  sortOrder  Int     @default(0)
+
+  bannerFor  LocationEntry? @relation("LocationBanner")
+  locationId String?
+  location   LocationEntry? @relation("LocationImages", fields: [locationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
 model WorldEntry {
   id               String                @id @default(cuid())
   name             String
@@ -73,6 +274,9 @@ model WorldEntry {
   cosmologyType    WorldCosmologyType?
   visibilityStatus WorldVisibilityStatus @default(DRAFT)
   isPublished      Boolean               @default(false)
+
+  infoSections Json?
+  notes        Json?
 
   sourceNote        String?
   installmentOrder  Int?
@@ -107,6 +311,8 @@ model WorldEntry {
   updatedAt        DateTime           @updatedAt
   crossoverSources WorldEntrySource[] @relation("WorldEntrySourceOwner")
   usedInCrossovers WorldEntrySource[] @relation("WorldEntrySourceTarget")
+  locations        LocationEntry[]    @relation("WorldEntryLocations")
+  novels           Novel[]
 
   @@index([type])
   @@index([parentId])

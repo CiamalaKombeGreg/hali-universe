@@ -1,12 +1,66 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import VerticalNavbar from "@/elements/home/VerticalNavbar";
 import UniverseSearchBar from "./UniverseSearchBar";
 import CelestialNavBody from "./CelestialNavBody";
 
+type UniverseMainSearchResult = {
+  id: string;
+  label: string;
+  slug: string;
+  kind: "World" | "Location" | "Lorebook" | "Novel";
+  subkind?: string;
+  href: string;
+};
+
 export default function UniversePage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<UniverseMainSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSearchChange(value: string) {
+    setQuery(value);
+
+    if (!value.trim()) {
+      setResults([]);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/universe-main-search?q=${encodeURIComponent(value)}`
+      );
+
+      if (!response.ok) {
+        setResults([]);
+        return;
+      }
+
+      const data = await response.json();
+      setResults(data.results ?? []);
+    } catch (error) {
+      console.error(error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleSelectResult(result: UniverseMainSearchResult) {
+    router.push(result.href);
+    setQuery("");
+    setResults([]);
+  }
+
+  function handleClear() {
+    setQuery("");
+    setResults([]);
+  }
 
   return (
     <main className="relative flex min-h-screen overflow-hidden bg-[#02040b] text-white">
@@ -39,7 +93,14 @@ export default function UniversePage() {
 
         <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1700px] flex-col px-6 py-6 md:px-10">
           <div className="mb-8">
-            <UniverseSearchBar value={query} onChange={setQuery} />
+            <UniverseSearchBar
+              value={query}
+              onChange={handleSearchChange}
+              results={results}
+              loading={loading}
+              onClear={handleClear}
+              onSelectResult={handleSelectResult}
+            />
           </div>
 
           <div className="relative flex-1 overflow-hidden rounded-[36px] border border-white/8 bg-white/[0.02] backdrop-blur-[1px]">

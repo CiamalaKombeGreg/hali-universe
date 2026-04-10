@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import type { WorldEntryCreatePayload } from "@/elements/universe/worldEntryTypes";
 
 export async function POST(request: Request) {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       !body.parentId
     ) {
       return NextResponse.json(
-        { error: "This entry type requires a parent series collection." },
+        { error: "This entry type requires a parent series collection or Original Creation." },
         { status: 400 }
       );
     }
@@ -43,23 +44,23 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Parent entry not found." }, { status: 404 });
       }
 
-      if (body.type === "CONTINUITY" && parent.type !== "SERIES_COLLECTION") {
+      if (body.type === "CONTINUITY" && parent.type !== "SERIES_COLLECTION" && parent.type !== "ORIGINAL_CREATION") {
         return NextResponse.json(
-          { error: "A continuity must have a parent series collection." },
+          { error: "A continuity must have a parent series collection or original creation." },
           { status: 400 }
         );
       }
 
-      if (body.type === "INSTALLMENT" && parent.type !== "CONTINUITY") {
+      if (body.type === "INSTALLMENT" && parent.type !== "CONTINUITY" && parent.type !== "FANMADE" && parent.type !== "SPINOFF") {
         return NextResponse.json(
-          { error: "An installment must have a parent continuity." },
+          { error: "An installment must have a parent continuity, fanmade or spinoff." },
           { status: 400 }
         );
       }
 
-      if (body.type === "SPINOFF" && parent.type !== "SERIES_COLLECTION") {
+      if (body.type === "SPINOFF" && parent.type !== "SERIES_COLLECTION" && parent.type !== "ORIGINAL_CREATION") {
         return NextResponse.json(
-          { error: "A spinoff must have a parent series collection." },
+          { error: "A spinoff must have a parent series collection or original creation." },
           { status: 400 }
         );
       }
@@ -151,6 +152,9 @@ export async function POST(request: Request) {
           installmentOrder: body.installmentOrder ?? null,
           installmentCode: body.installmentCode ?? null,
 
+          infoSections: body.infoSections as Prisma.InputJsonValue,
+          notes: body.notes as Prisma.InputJsonValue,
+          
           isStandaloneContainer: body.isStandaloneContainer ?? null,
           allowOriginalCreations: body.allowOriginalCreations ?? null,
           allowOfficialSeries: body.allowOfficialSeries ?? null,

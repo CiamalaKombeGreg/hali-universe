@@ -25,7 +25,7 @@ const navItems = [
     icon: Flame,
     subItems: [
       { label: "Tiering Wiki", href: "/tiering-power/tiering-wiki", icon: BookOpen },
-      { label: "Statistiques Wiki", href: "/tiering-power/statistics-wiki", icon: BarChart3 },
+      { label: "Statistics Wiki", href: "/tiering-power/statistics-wiki", icon: BarChart3 },
       { label: "Recorded Abilities", href: "/tiering-power/recorded-abilities", icon: WandSparkles },
     ],
   },
@@ -42,7 +42,6 @@ const navItems = [
   { label: "Characters", href: "/characters", icon: Users },
   { label: "Battle Mode", href: "/battle-mode", icon: Swords },
   { label: "Leaderboard", href: "/leaderboard", icon: Trophy },
-  { label: "Community", href: "/community", icon: MessagesSquare },
 ];
 
 export default function VerticalNavbar() {

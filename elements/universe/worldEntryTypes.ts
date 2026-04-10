@@ -1,3 +1,5 @@
+import type { UniverseContentSection } from "./universeContentTypes";
+
 export type WorldEntryTypeValue =
   | "UNIVERSE"
   | "SERIES_COLLECTION"
@@ -66,6 +68,9 @@ export type WorldEntryCreatePayload = {
   sourceSeriesNote?: string;
   installmentOrder?: number | null;
   installmentCode?: string | null;
+
+  infoSections: UniverseContentSection[];
+  notes: string[];
 
   isStandaloneContainer?: boolean;
   allowOriginalCreations?: boolean;

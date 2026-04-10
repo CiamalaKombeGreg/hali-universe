@@ -1,16 +1,17 @@
+"use client";
+
 import VerticalNavbar from "@/elements/home/VerticalNavbar";
-import TieringSearchBanner from "./TieringSearchBanner";
 import TieringSectionHeader from "./TieringSectionHeader";
 import TieringMenuButtons from "./TieringMenuButtons";
 
 export default function TieringPowerPage() {
+
   return (
     <main className="flex min-h-screen bg-[#060816] text-white">
       <VerticalNavbar />
 
       <div className="flex-1">
         <div className="mx-auto flex w-full max-w-400 flex-col gap-6 px-6 py-6 md:px-10">
-          <TieringSearchBanner title="Keywords" description="Fast access to scaling information and recorded systems." />
 
           <TieringSectionHeader
             title="Tiering Power Main Section"

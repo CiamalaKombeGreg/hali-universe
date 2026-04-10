@@ -224,7 +224,7 @@ export default function UniverseManagePage() {
 
                 <div className="rounded-[24px] border border-rose-300/15 bg-rose-400/8 p-4">
                   <div className="text-xs font-black uppercase tracking-[0.18em] text-rose-100">
-                    Official timeline inside a collection
+                    Timeline inside a collection
                   </div>
                   <div className="mt-2 text-sm font-semibold text-white">
                     Timeline / Continuity
@@ -233,7 +233,7 @@ export default function UniverseManagePage() {
 
                 <div className="rounded-[24px] border border-fuchsia-300/15 bg-fuchsia-400/8 p-4">
                   <div className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-100">
-                    Official alternate work
+                    Alternate work
                   </div>
                   <div className="mt-2 text-sm font-semibold text-white">
                     Spinoff
@@ -388,7 +388,7 @@ export default function UniverseManagePage() {
               <TreeLine
                 level={1}
                 title="Continuity"
-                description="Specific canon branch or timeline of a Series Collection. Used when multiple official or alternate paths exist."
+                description="Specific canon branch or timeline of a Series Collection or Original creation. Used when multiple official or alternate paths exist."
               />
               <TreeLine
                 level={2}
@@ -402,7 +402,7 @@ export default function UniverseManagePage() {
               />
               <TreeLine
                 level={2}
-                title="Must have parent → Continuity"
+                title="Must have parent → Continuity / Spinoff / Fanmade"
               />
               <TreeLine
                 level={2}
@@ -412,11 +412,11 @@ export default function UniverseManagePage() {
               <TreeLine
                 level={1}
                 title="Spinoff"
-                description="Official derivative of a Series Collection. Must have a parent Series Collection. Is not main canon continuity."
+                description="Derivative of a Series Collection or Original Creation. Must have a parent Series Collection. Is not main canon continuity."
               />
               <TreeLine
                 level={2}
-                title="Can contain → Locations"
+                title="Can contain → Locations / Installments"
               />
 
               <TreeLine
@@ -426,7 +426,7 @@ export default function UniverseManagePage() {
               />
               <TreeLine
                 level={2}
-                title="Can contain → Locations"
+                title="Can contain → Locations / Installments"
               />
 
               <TreeLine
@@ -436,7 +436,15 @@ export default function UniverseManagePage() {
               />
               <TreeLine
                 level={2}
-                title="Can contain → Locations"
+                title="Can contain → Continuity / Locations"
+              />
+              <TreeLine
+                level={2}
+                title="Derived forms → Spinoff"
+              />
+              <TreeLine
+                level={2}
+                title="Cannot contain → Fanmade"
               />
 
               <TreeLine

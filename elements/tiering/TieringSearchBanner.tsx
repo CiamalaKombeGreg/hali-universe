@@ -1,7 +1,7 @@
 "use client";
 
 import { Search, Sparkles, X } from "lucide-react";
-import { ChangeEvent } from "react";
+import { ChangeEvent, KeyboardEvent } from "react";
 import type { SearchResultLike } from "./sharedSearchTypes";
 
 type TieringSearchBannerProps = {
@@ -15,6 +15,7 @@ type TieringSearchBannerProps = {
   results?: SearchResultLike[];
   onSelectResult?: (result: SearchResultLike) => void;
   onClear?: () => void;
+  onSubmit?: () => void;
 };
 
 export default function TieringSearchBanner({
@@ -28,8 +29,23 @@ export default function TieringSearchBanner({
   results = [],
   onSelectResult,
   onClear,
+  onSubmit,
 }: TieringSearchBannerProps) {
-  const showResults = value.trim().length > 0 && results.length > 0;
+  const showResults =
+    value.trim().length > 0 &&
+    results.length > 0 &&
+    typeof onSelectResult === "function";
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      if (showResults && results[0] && onSelectResult) {
+        onSelectResult(results[0]);
+        return;
+      }
+
+      onSubmit?.();
+    }
+  }
 
   return (
     <section
@@ -39,7 +55,7 @@ export default function TieringSearchBanner({
           : "rounded-[30px] p-6 shadow-[0_0_30px_rgba(139,92,246,0.15)]"
       }`}
     >
-      <div className="absolute inset-0 rounded-[inherit] bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_22%),radial-gradient(circle_at_top_right,rgba(217,70,239,0.18),transparent_24%),radial-gradient(circle_at_bottom,rgba(34,211,238,0.12),transparent_22%)]" />
+      <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_22%),radial-gradient(circle_at_top_right,rgba(217,70,239,0.18),transparent_24%),radial-gradient(circle_at_bottom,rgba(34,211,238,0.12),transparent_22%)]" />
 
       <div className="relative z-210 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
@@ -86,6 +102,7 @@ export default function TieringSearchBanner({
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
                 onChange?.(event.target.value)
               }
+              onKeyDown={handleKeyDown}
               placeholder={placeholder}
               className="w-full bg-transparent text-sm text-white placeholder:text-white/40 outline-none"
             />
